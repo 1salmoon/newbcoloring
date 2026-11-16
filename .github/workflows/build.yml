@@ -8,14 +8,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: unzip -q lighting-sky-ore-water-source.zip
+      - run: unzip -q full-end-source.zip
       - run: |
-          cd lighting-sky-ore-water
+          cd full-end
           pip install -r requirements.txt
           chmod +x build.sh
           ./build.sh setup
           ./build.sh pack
       - uses: actions/upload-artifact@v4
         with:
-          name: lighting-sky-ore-water-mcpack
-          path: lighting-sky-ore-water/build/*
+          name: full-end-mcpack
+          path: full-end/build/*
