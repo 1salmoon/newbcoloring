@@ -5,6 +5,7 @@ name: build-sun-fix
 # tes di game, ulangi sampai pas.
 # Folder proyek (yang berisi build.sh + requirements.txt) dicari otomatis,
 # jadi aman walau repo berisi subfolder (mis. full-end-b/).
+# Kalau repo hanya berisi file zip source, zip diekstrak otomatis.
 on:
   workflow_dispatch:
     inputs:
@@ -35,6 +36,17 @@ jobs:
     runs-on: ${{ (inputs.platform == 'windows' || inputs.platform == 'multiplatform') && 'windows-2022' || 'ubuntu-latest' }}
     steps:
     - uses: actions/checkout@v7
+
+    - name: Ekstrak zip source (jika repo hanya berisi zip)
+      shell: bash
+      run: |
+        if ! find . -name build.sh -not -path "./.git/*" | grep -q .; then
+          z=$(find . -maxdepth 2 -name "*.zip" -not -path "./.git/*" | head -1)
+          if [ -n "$z" ]; then
+            echo "Mengekstrak $z"
+            mkdir -p _src && unzip -q "$z" -d _src
+          fi
+        fi
 
     - name: Cari folder proyek
       shell: bash
