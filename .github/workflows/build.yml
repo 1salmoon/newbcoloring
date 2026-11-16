@@ -87,8 +87,8 @@ jobs:
       if: ${{ inputs.platform == 'android' || inputs.platform == 'ios' }}
       working-directory: ${{ env.PROJECT_DIR }}
       run: |
-        ./build.sh setup
-        ./build.sh pack -p ${{ inputs.platform }} -v ${{ inputs.subversion }} --no-zip
+        bash build.sh setup
+        bash build.sh pack -p ${{ inputs.platform }} -v ${{ inputs.subversion }} --no-zip
 
     - name: Build (Windows)
       if: ${{ inputs.platform == 'windows' || inputs.platform == 'multiplatform' }}
