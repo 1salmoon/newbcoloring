@@ -1,20 +1,40 @@
 name: build
-on: [workflow_dispatch]
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'full-end-b-source.zip'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: unzip -q full-end-b-source.zip
-      - run: |
+
+      - name: Unzip source
+        run: unzip -q full-end-b-source.zip
+
+      - name: Cache shaderc + material data
+        uses: actions/cache@v4
+        with:
+          key: env-files-linux-laz
+          path: full-end-b/tool/data
+
+      - name: Build
+        run: |
           cd full-end-b
           pip install -r requirements.txt
           chmod +x build.sh
           ./build.sh setup
-          ./build.sh pack
+          ./build.sh pack -p android
+
       - uses: actions/upload-artifact@v4
         with:
           name: full-end-b-mcpack
