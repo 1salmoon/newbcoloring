@@ -10,7 +10,7 @@ jobs:
           python-version: '3.11'
       - run: unzip -q full-end-b-source.zip
       - run: |
-          cd full-end-a
+          cd full-end-b
           pip install -r requirements.txt
           chmod +x build.sh
           ./build.sh setup
