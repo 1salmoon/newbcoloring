@@ -3,6 +3,8 @@ name: build-sun-fix
 # Build cepat untuk kalibrasi posisi glow langit vs matahari.
 # Actions -> build-sun-fix -> Run workflow, isi nilai, download artifact .mcpack,
 # tes di game, ulangi sampai pas.
+# Folder proyek (yang berisi build.sh + requirements.txt) dicari otomatis,
+# jadi aman walau repo berisi subfolder (mis. full-end-b/).
 on:
   workflow_dispatch:
     inputs:
@@ -30,22 +32,34 @@ on:
 
 jobs:
   build:
-    # windows/multiplatform memakai runner Windows seperti build.yml bawaan repo
     runs-on: ${{ (inputs.platform == 'windows' || inputs.platform == 'multiplatform') && 'windows-2022' || 'ubuntu-latest' }}
     steps:
     - uses: actions/checkout@v7
+
+    - name: Cari folder proyek
+      shell: bash
+      run: |
+        req=$(find . -name requirements.txt -not -path "*/node_modules/*" -not -path "./.git/*" | while read -r f; do d=$(dirname "$f"); [ -f "$d/build.sh" ] && echo "$d" && break; done)
+        if [ -z "$req" ]; then
+          echo "::error::requirements.txt + build.sh tidak ditemukan di repo. Isi repo:"
+          ls -la
+          exit 1
+        fi
+        echo "PROJECT_DIR=$req" >> "$GITHUB_ENV"
+        echo "Folder proyek: $req"
+
     - uses: actions/setup-python@v7
       with:
         python-version: '3.14'
-        cache: 'pip'
+
     - uses: actions/cache@v6
       with:
         key: env-files-${{ (inputs.platform == 'windows' || inputs.platform == 'multiplatform') && 'win' || 'linux' }}-laz
-        path: |
-          ${{ github.workspace }}/tool/data
+        path: ${{ env.PROJECT_DIR }}/tool/data
 
     - name: Terapkan nilai kalibrasi ke config.h
       shell: bash
+      working-directory: ${{ env.PROJECT_DIR }}
       run: |
         f=src/newb/config.h
         sed -i -E "s/^(#define NL_SUN_PATH_YAW)[[:space:]]+[^ ]+/\1 ${{ inputs.sun_yaw }}/" $f
@@ -53,22 +67,27 @@ jobs:
         sed -i -E "s/^(#define NL_SUN_GLOW_YAW_OFFSET)[[:space:]]+[^ ]+/\1 ${{ inputs.glow_offset }}/" $f
         grep -nE "^#define NL_(SUN_PATH|SUN_GLOW)" $f
 
-    - run: pip install -r requirements.txt
+    - name: Install dependencies
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: pip install -r requirements.txt
 
     - name: Build (Linux)
       if: ${{ inputs.platform == 'android' || inputs.platform == 'ios' }}
+      working-directory: ${{ env.PROJECT_DIR }}
       run: |
         ./build.sh setup
         ./build.sh pack -p ${{ inputs.platform }} -v ${{ inputs.subversion }} --no-zip
 
     - name: Build (Windows)
       if: ${{ inputs.platform == 'windows' || inputs.platform == 'multiplatform' }}
+      working-directory: ${{ env.PROJECT_DIR }}
       run: |
         .\build.bat setup
         .\build.bat pack -p ${{ inputs.platform }} -v ${{ inputs.subversion }} --no-zip
 
     - name: Zip jadi .mcpack
       shell: bash
+      working-directory: ${{ env.PROJECT_DIR }}
       run: |
         python -c "import shutil; shutil.make_archive('newb-sunfix-${{ inputs.platform }}', 'zip', 'build/pack-${{ inputs.platform }}')"
         mv newb-sunfix-${{ inputs.platform }}.zip newb-sunfix-${{ inputs.platform }}.mcpack
@@ -76,4 +95,4 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         name: newb-sunfix-${{ inputs.platform }}
-        path: newb-sunfix-${{ inputs.platform }}.mcpack
+        path: ${{ env.PROJECT_DIR }}/newb-sunfix-${{ inputs.platform }}.mcpack
